@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(PangoUNIT)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 # Find Boost
 find_package(Boost REQUIRED)
@@ -19,7 +20,7 @@ add_library(${PROJECT_NAME}_lib
 )
 
 add_executable(PangoBBG bbg_main.cpp)
-add_executable(PangoSTM32 stm32_main.cpp)
+# add_executable(PangoSTM32 stm32_main.cpp)
 
-target_link_libraries(PangoSTM32 ${PROJECT_NAME}_lib)
+# target_link_libraries(PangoSTM32 ${PROJECT_NAME}_lib)
 target_link_libraries(PangoBBG ${PROJECT_NAME}_lib)

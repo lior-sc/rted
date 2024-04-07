@@ -29,8 +29,10 @@ private:
     int socket_fd = -1;
     bool deliverable_data_exists = false;
 
-    GPS_POINT_T* gps_data = nullptr;
-    int* new_data_available = nullptr;
+    boost::interprocess::managed_shared_memory shm;
+    GPS_POINT_T *gps_data;
+    int *new_data_available;
+    
     std::shared_ptr<boost::interprocess::named_mutex> gps_mutex;
 
     std::thread gps_thread;

@@ -5,6 +5,7 @@
 
 using boost::interprocess::read_write;
 using boost::interprocess::create_only;
+using boost::interprocess::open_or_create;
 
 #define SHARED_MEMORY_NAME "RTED_PANGO"
 #define GPS_MUTEX_NAME "RTED_PANGO_GPS_MUTEX"
@@ -12,21 +13,30 @@ using boost::interprocess::create_only;
 #define THREAD_SLEEP_TIME_MS 100
 
 namespace PangoBBG {
-PangoBBGNode::PangoBBGNode() {
+PangoBBGNode::PangoBBGNode() : shm(open_or_create, SHARED_MEMORY_NAME, SHARED_MEMORY_SIZE){
+    /** @note
+     * one cannot open 2 instances of PaangoBBGNode at the same time on the same machine since the
+     * shared memory is created with the same name. This is a limitation of the current implementation.
+    */
+
     // create or open the managed shared memory
     std::cout << "Creating shared memory\n";
-    
-    boost::interprocess::managed_shared_memory shm(create_only, SHARED_MEMORY_NAME, SHARED_MEMORY_SIZE);
-    
 
     // allocate memory for GPS_POINT_T object
-    GPS_POINT_T* gps_data = shm.construct<GPS_POINT_T>("gps_data")();
-
-    // allocate memory for new_data_available variable
-    int* new_data_available = shm.construct<int>("new_data_available")(0);
+    gps_data = shm.find_or_construct<GPS_POINT_T>("gps_data")();
+    new_data_available = shm.find_or_construct<int>("new_data_available")(0);
 
     // create a named mutex
-    gps_mutex = std::make_shared<boost::interprocess::named_mutex>(create_only, GPS_MUTEX_NAME);
+    gps_mutex = std::make_shared<boost::interprocess::named_mutex>(open_or_create, GPS_MUTEX_NAME);
+
+     // initialize the GPS data
+    gps_mutex->lock();
+    gps_data->latitude = 0;
+    gps_data->longitude = 0;
+    gps_data->timestamp = std::chrono::system_clock::now();
+    gps_mutex->unlock();
+
+    std::cout << "PangoBBGNode created" << std::endl;
 
     return;
 }
@@ -38,11 +48,10 @@ PangoBBGNode::~PangoBBGNode() {
     
     if(gps_thread.joinable()){
         gps_thread.join();
-    }
-    
+    }  
     
     // destroy shared memory
-    boost::interprocess::named_mutex::remove(SHARED_MEMORY_NAME);
+    boost::interprocess::named_mutex::remove(GPS_MUTEX_NAME);
     boost::interprocess::shared_memory_object::remove(SHARED_MEMORY_NAME);
     // alert the user
     printf("Exiting PangoBBGNode. shared memory destroyed\n");
@@ -90,7 +99,7 @@ int PangoBBGNode::connectToServer(){
         return -1;
     }
 
-    std::cout << "Connected to server\n";
+    std::cout << "Connected to server. socket_fd = " << socket_fd << std::endl;
 
     return socket_fd;
 
@@ -99,20 +108,23 @@ int PangoBBGNode::connectToServer(){
 void PangoBBGNode::GPSThreadFunction(int client_id) {
     PANGO_CLIENT_MSG_T msg;
     GPS_POINT_T gps_data_loc;
-
     msg.client_id = client_id;
 
     while(gps_thread_running == true){
         
         if(getGPSData(&gps_data_loc) == true){
-            // new data available. send to server
-            msg.gps_data = gps_data_loc;
-            // send the message to the server
-            int ret = send(client_id, &msg, sizeof(msg), 0);
-            // check if the message was sent successfully
-            if(ret == -1){
-                std::cerr << "Error sending data to server. Errno: " << errno << "  " << strerror(errno) << std::endl;
-            }          
+            std::cout << "New GPS data available. msg size [bytes]: " << *new_data_available << std::endl;
+            if(*new_data_available == sizeof(GPS_POINT_T)){
+                // new data available. send to server
+                msg.gps_data = gps_data_loc;
+                // send the message to the server
+                int ret = send(client_id, &msg, sizeof(msg), 0);
+                // check if the message was sent successfully
+                if(ret == -1){
+                    std::cerr << "Error sending data to server. Errno: " << errno << "  " << strerror(errno) << std::endl;
+                }     
+            }
+     
         }
         // sleep for a while. allow other threads to run
         std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_SLEEP_TIME_MS));
@@ -125,7 +137,7 @@ void PangoBBGNode::GPSThreadFunction(int client_id) {
 
 bool PangoBBGNode::getGPSData(GPS_POINT_T* ref_var) {
     bool got_new_data = false;
-    
+
     gps_mutex->lock();
     if(*new_data_available == 1){
         // if new data is available read it and update the flag.

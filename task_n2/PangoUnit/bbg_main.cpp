@@ -16,6 +16,8 @@ void signalHandler(int signal) {
 
 int main (int argc, char *argv[]) {
     std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+    std::signal(SIGQUIT, signalHandler);
     std::cout << "Starting PangoBBGNode..." << std::endl;
     pango_bbg.run();
 
