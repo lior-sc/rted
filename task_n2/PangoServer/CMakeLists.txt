@@ -1,17 +1,22 @@
 cmake_minimum_required(VERSION 3.12)
-project(PangoBBG)
-
-# Find Boost
-find_package(Boost REQUIRED)
+project(PangoSrever)
 
 # Include Boost headers directory
 include_directories(
-    ${Boost_INCLUDE_DIRS}
     include 
     ../GPS
 )
 
 # Create a library
 add_library(${PROJECT_NAME}_lib STATIC
-    src/PangoBBG.cpp
+    src/PangoServer.cpp
 )
+
+# Create an executable
+add_executable(${PROJECT_NAME}
+    main.cpp
+)
+
+target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_lib)
+
+

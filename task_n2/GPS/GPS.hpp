@@ -9,6 +9,10 @@ typedef struct GPS_POINT_T {
     double longitude;
 } GPS_POINT_T;
 
+typedef struct PANGO_CLIENT_MSG_T{
+    int client_id;
+    GPS_POINT_T gps_data;
+} Pango_MSG_T;
 
 
 // Your code goes here
