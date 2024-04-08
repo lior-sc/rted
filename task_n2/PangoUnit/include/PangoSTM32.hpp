@@ -23,11 +23,14 @@ private:
     void GpsWriteThreadFunction();
 
     // class variables
-    GPS_POINT_T* gps_data = nullptr;
-    int* new_data_available = nullptr;
     bool _gps_thread_running = false;
-    std::shared_ptr<boost::interprocess::named_mutex> _gps_mutex;
     std::thread gps_write_thread;
+
+    // shared memory variables
+    boost::interprocess::managed_shared_memory shm;
+    std::shared_ptr<boost::interprocess::named_mutex> _gps_mutex;
+    GPS_POINT_T* gps_data;
+    int* new_data_available;
 };
 
 }

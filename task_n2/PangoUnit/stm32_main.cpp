@@ -17,6 +17,7 @@ void signalHandler(int signal) {
 int main (int argc, char *argv[]) {
     std::signal(SIGINT, signalHandler);
 
+    std::cout << "Starting PangoSTM32 node operation." << std::endl;
     pango_stm32.run();
 
     // Wait for halt signal (Ctrl+C)

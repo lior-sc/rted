@@ -15,10 +15,10 @@
 
 namespace PangoBBG {
 
-class PangoBBGNode {
+class PangoBBGClass {
 public:
-    PangoBBGNode();
-    ~PangoBBGNode();
+    PangoBBGClass();
+    ~PangoBBGClass();
 
     void run();
 private:

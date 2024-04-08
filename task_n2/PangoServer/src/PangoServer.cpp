@@ -91,33 +91,21 @@ void PangoServerClass::acceptClientsThread(){
 void PangoServerClass::clientThread(int client_socket){
     // Read messages from client socket
     PANGO_CLIENT_MSG_T client_msg;
-    int bytes_read = 0;
-    bool data_logged = false;
+    ssize_t bytes_read = 0;
+
+    uint8_t buffer[1024] = {0};
 
     while(_client_thread_running){
-        if(bytes_read == sizeof(PANGO_CLIENT_MSG_T) - 1){
-            // message received log the data
-            if(data_logged == false){
-                // log the data
-                data_logged = writeLog(client_msg);
-            }
-            else{
-                // message receive and logged. reset the variables
-                bytes_read = 0;
-                data_logged = false;
-            }
-        }
-        else if(bytes_read == 0){
-            // read from socket
-            bytes_read = read(client_socket, &client_msg, sizeof(PANGO_CLIENT_MSG_T));
+        bytes_read = recv(client_socket, &buffer, sizeof(buffer)-1, 0);
+        if(bytes_read == sizeof(client_msg)){
+            memcpy(&client_msg, buffer, sizeof(client_msg));
+            std::cout << "Client [" << client_msg.client_id << "] sent message: lat: " << client_msg.gps_data.latitude << std::endl;
+            updateLog(client_msg);
         }
         else{
-            // bad message
-            bytes_read = 0;
-            std::cout << "client[" <<client_msg.client_id << "] got bad message.  bytes read = " << bytes_read<< std::endl;
+            // do nothing. read again
         }
     }
-
     std::cout << "Exiting client [" << client_msg.client_id << "] Thread" << std::endl;
 }
 
@@ -140,7 +128,7 @@ bool PangoServerClass::acceptConnections(){
     return true;
 }
 
-bool PangoServerClass::writeLog(PANGO_CLIENT_MSG_T client_msg){
+bool PangoServerClass::updateLog(PANGO_CLIENT_MSG_T client_msg){
     std::time_t client_timestamp = std::chrono::system_clock::to_time_t(client_msg.gps_data.timestamp);
     std::string timestamp_str = std::ctime(&client_timestamp);
 

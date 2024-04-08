@@ -24,7 +24,7 @@ private:
     bool acceptConnections();
     void clientThread(int client_socket);
     void acceptClientsThread();
-    bool writeLog(PANGO_CLIENT_MSG_T client_msg);
+    bool updateLog(PANGO_CLIENT_MSG_T client_msg);
 
     bool _client_thread_running = false;
     bool _accept_new_connections = false;

@@ -20,7 +20,7 @@ add_library(${PROJECT_NAME}_lib
 )
 
 add_executable(PangoBBG bbg_main.cpp)
-# add_executable(PangoSTM32 stm32_main.cpp)
+add_executable(PangoSTM32 stm32_main.cpp)
 
-# target_link_libraries(PangoSTM32 ${PROJECT_NAME}_lib)
+target_link_libraries(PangoSTM32 ${PROJECT_NAME}_lib)
 target_link_libraries(PangoBBG ${PROJECT_NAME}_lib)
