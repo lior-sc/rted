@@ -9,4 +9,4 @@ set(SOURCES
 )
 
 # Create the executable
-add_executable(MyExecutable ${SOURCES})
+add_executable(task_n1 ${SOURCES})
