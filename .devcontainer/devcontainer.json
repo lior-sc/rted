@@ -1,0 +1,57 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+    "name": "rted-C_Cpp-project",
+    // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "..",
+        "args": {
+            "GIT_USERNAME": "lior-sc",
+            "GIT_USEREMAIL": "liorsmail89@gmail.com"
+        },
+        "target": "base"
+
+    },
+    "privileged": true,
+    "runArgs": [
+
+    ],
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+
+    // Features to add to the dev container. More info: https://containers.dev/features.
+    // "features": {},
+
+
+    // Use 'forwardPorts' to make a list of ports inside the container available locally.
+    // "forwardPorts": [],
+
+    // Use 'postCreateCommand' to run commands after the container is created.
+    // "postCreateCommand": "uname -a",
+
+    // Configure tool-specific properties. More info: https://containers.dev/supporting
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.shell.linux": "/bin/bash"
+            },
+            "extensions": [
+                "GitHub.copilot",
+                "GitHub.copilot-chat",
+                "ms-vscode.cpptools",
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.cpptools-themes",
+                "ms-python.vscode-pylance",
+                "ms-python.python",
+                "ms-vscode.cmake-tools",
+                "twxs.cmake",
+                "mhutchie.git-graph",
+                "shd101wyy.markdown-preview-enhanced",
+                "ms-azuretools.vscode-docker",
+                "ms-vscode-remote.remote-containers"
+            ]
+        }
+    }
+}
