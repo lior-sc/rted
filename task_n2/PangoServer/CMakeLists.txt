@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(PangoSrever)
+project(PangoServer)
 
 # Include Boost headers directory
 include_directories(
