@@ -20,6 +20,7 @@ int main (int argc, char *argv[]) {
     std::signal(SIGINT, signalHandler);
     std::signal(SIGTERM, signalHandler);
     std::signal(SIGQUIT, signalHandler);
+    
     std::cout << "Starting a PangoBBG node..." << std::endl;
     pango_bbg.run();
 

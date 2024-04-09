@@ -17,7 +17,7 @@ namespace PangoBBG {
 
 class PangoBBGClass {
 public:
-    PangoBBGClass(int client_id);
+    PangoBBGClass(int16_t client_id);
     ~PangoBBGClass();
     
     void run();
@@ -32,7 +32,7 @@ private:
     // server connection
     int socket_fd = -1;
     bool deliverable_data_exists = false;
-    int _client_id = 0;
+
     // shared memory
     boost::interprocess::managed_shared_memory shm;
     GPS_POINT_T *gps_data;
@@ -41,6 +41,16 @@ private:
     // threads
     std::thread gps_thread;
     bool gps_thread_running = false;
+    // parking logic
+    enum PARKING_STATES {
+        PARKING_STATE_UNKNOWN = -1,
+        PARKING_STATE_START,
+        PARKING_STATE_OCCUPIED,
+        PARKING_STATE_END
+    };
+    int16_t _client_id = 0;
+    int8_t _parking_state = PARKING_STATE_UNKNOWN;
+
 
     
 

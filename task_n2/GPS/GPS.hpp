@@ -10,7 +10,8 @@ typedef struct GPS_POINT_T {
 } GPS_POINT_T;
 
 typedef struct PANGO_CLIENT_MSG_T{
-    int client_id;
+    int16_t client_id;
+    int8_t parking_state;
     GPS_POINT_T gps_data;
 } Pango_MSG_T;
 

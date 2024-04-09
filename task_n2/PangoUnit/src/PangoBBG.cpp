@@ -14,7 +14,9 @@ using boost::interprocess::open_or_create;
 using boost::interprocess::create_only;
 
 namespace PangoBBG {
-PangoBBGClass::PangoBBGClass(int client_id) : _client_id(client_id),
+PangoBBGClass::PangoBBGClass(int16_t client_id) : 
+    _client_id(client_id),
+    _parking_state(PARKING_STATE_START),
     shm(create_only, SHARED_MEMORY_NAME, SHARED_MEMORY_SIZE){
 
     /** @note
@@ -51,8 +53,7 @@ PangoBBGClass::PangoBBGClass(int client_id) : _client_id(client_id),
     return;
 }
 
-PangoBBGClass::~PangoBBGClass() {
-
+PangoBBGClass::~PangoBBGClass(){
     // stop the GPS read thread
     gps_thread_running = false;
     
@@ -119,18 +120,32 @@ void PangoBBGClass::GPSThreadFunction(int client_id) {
     PANGO_CLIENT_MSG_T msg;
     GPS_POINT_T gps_data_loc;
     msg.client_id = client_id;
+    _parking_state = PARKING_STATE_START;
 
     while(gps_thread_running == true){
         
         if(getGPSData(&gps_data_loc, VERBOSE) == true){
             // new data available. send to server
-            sendDataToServer(gps_data_loc, VERBOSE);
+            if(_parking_state == PARKING_STATE_START){
+                // update the parking state to occupied
+                if(sendDataToServer(gps_data_loc, VERBOSE) == true){
+                    _parking_state = PARKING_STATE_OCCUPIED;
+                }
+            }
+            else{
+                // send the data to the server
+                sendDataToServer(gps_data_loc, VERBOSE);
+            }
         }
-        else{
-            // do nothing
-            // std::cout << "No new GPS data available\n";
-        }
-        // sleep for a while. allow other threads to run
+        std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_SLEEP_TIME_MS));
+    }
+
+    // if the thread is exiting, send the last data to the server
+    while(!getGPSData(&gps_data_loc, VERBOSE)){
+        // send the last data to the server
+        _parking_state = PARKING_STATE_END;
+        sendDataToServer(gps_data_loc, VERBOSE);
+        // wait for the last data to be sent
         std::this_thread::sleep_for(std::chrono::milliseconds(THREAD_SLEEP_TIME_MS));
     }
 
@@ -165,6 +180,7 @@ bool PangoBBGClass::getGPSData(GPS_POINT_T* ref_var, bool verbose) {
 bool PangoBBGClass::sendDataToServer(GPS_POINT_T gps_data, bool verbose) {
     PANGO_CLIENT_MSG_T msg;
     msg.client_id = _client_id;
+    msg.parking_state = _parking_state;
     msg.gps_data = gps_data;
     
     int ret = send(socket_fd, &msg, sizeof(msg), 0);

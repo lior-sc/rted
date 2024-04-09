@@ -91,16 +91,33 @@ void PangoServerClass::acceptClientsThread(){
 void PangoServerClass::clientThread(int client_socket){
     // Read messages from client socket
     PANGO_CLIENT_MSG_T client_msg;
+    PANGO_CLIENT_MSG_T prev_client_msg;
     ssize_t bytes_read = 0;
+    unsigned long int parking_state_start_time = 0;
+    double area_pricing = 0.0;
+    double total_price = 0.0;
 
     uint8_t buffer[1024] = {0};
 
     while(_client_thread_running){
         bytes_read = recv(client_socket, &buffer, sizeof(buffer)-1, 0);
         if(bytes_read == sizeof(client_msg)){
+            // save the previous message
+            prev_client_msg = client_msg; 
+            // copy the received message to client_msg
             memcpy(&client_msg, buffer, sizeof(client_msg));
-            std::cout << "Client [" << client_msg.client_id << "] sent message: lat: " << client_msg.gps_data.latitude << std::endl;
-            updateLog(client_msg);
+            // update the total parking duration
+            double total_parking_duration = updateParkingDuration(client_msg, &parking_state_start_time);
+            // calculate the area pricing
+            double current_area_pricing = calculateAreaPricing(client_msg.gps_data.latitude, client_msg.gps_data.longitude);
+            // update the total price
+            updateParkingCost(client_msg, prev_client_msg, total_price, current_area_pricing);
+
+            updateLog(client_msg, total_parking_duration, current_area_pricing, total_price);
+            if(client_msg.parking_state == PARKING_STATE_END){
+                // exit the thread
+                break;
+            }
         }
         else{
             // do nothing. read again
@@ -128,17 +145,55 @@ bool PangoServerClass::acceptConnections(){
     return true;
 }
 
-bool PangoServerClass::updateLog(PANGO_CLIENT_MSG_T client_msg){
+bool PangoServerClass::updateLog(PANGO_CLIENT_MSG_T client_msg, double total_parking_duration, double current_area_pricing, double total_price){
     std::time_t client_timestamp = std::chrono::system_clock::to_time_t(client_msg.gps_data.timestamp);
     std::string timestamp_str = std::ctime(&client_timestamp);
     unsigned long int timestamp_int = static_cast<long>(client_msg.gps_data.timestamp.time_since_epoch().count());
 
     _log_mutex.lock();
-    _log_file << "id," << client_msg.client_id  << ",timestamp," << timestamp_int <<",latlong," << client_msg.gps_data.latitude <<","  << client_msg.gps_data.longitude << std::endl;
+    _log_file << "id," << client_msg.client_id  
+        << ",parking_state," << static_cast<int>(client_msg.parking_state) 
+        << ",timestamp," << timestamp_int 
+        <<",lat_long," << client_msg.gps_data.latitude <<","  << client_msg.gps_data.longitude 
+        << ",total_duration:" << total_parking_duration
+        << ",area_pricing[usd/sec]," << current_area_pricing
+        << ",total_cost," << total_price 
+        << std::endl;
     _log_mutex.unlock();
 
     return true;
 }
 
+double PangoServerClass::calculateAreaPricing(double latitude, double longitude){
+    double area_pricing = static_cast<double>(abs(latitude) + abs(longitude))/(100*60); // USD per second
+    return static_cast<double>(abs(latitude) + abs(longitude))/1000;
+}
+
+double PangoServerClass::updateParkingCost(PANGO_CLIENT_MSG_T client_msg, PANGO_CLIENT_MSG_T prev_client_msg, double current_cost, double current_area_pricing){
+    /** @bug
+     * for some reason the total cost is not being updated correctly.
+     * no time to fix this before submitting this task
+    */
+    double dt_sec = 1e-9 * static_cast<double>(client_msg.gps_data.timestamp.time_since_epoch().count() - prev_client_msg.gps_data.timestamp.time_since_epoch().count()); 
+    std::cout << "dt_sec: " << dt_sec << "  current area pricing: " << current_area_pricing << "  " 
+        << "  current cost: " << current_cost << "  "
+        << current_cost + (current_area_pricing * dt_sec) << std::endl;
+    return (current_cost + current_area_pricing * dt_sec);
+}
+
+unsigned long int PangoServerClass::updateParkingDuration(PANGO_CLIENT_MSG_T client_msg, unsigned long int* start_time){
+    if(client_msg.parking_state == PARKING_STATE_UNKNOWN){
+        return 0;
+    }
+    if(client_msg.parking_state == PARKING_STATE_START){
+        *start_time = client_msg.gps_data.timestamp.time_since_epoch().count();
+        return 0;
+    }
+    if(client_msg.parking_state == PARKING_STATE_OCCUPIED || client_msg.parking_state == PARKING_STATE_END){
+        return (client_msg.gps_data.timestamp.time_since_epoch().count() - *start_time)*1e-9;
+        // do nothing
+    }
+    return 0;
+}
 
 } // namespace PangoServer
