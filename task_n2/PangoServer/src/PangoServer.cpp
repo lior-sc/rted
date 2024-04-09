@@ -131,9 +131,10 @@ bool PangoServerClass::acceptConnections(){
 bool PangoServerClass::updateLog(PANGO_CLIENT_MSG_T client_msg){
     std::time_t client_timestamp = std::chrono::system_clock::to_time_t(client_msg.gps_data.timestamp);
     std::string timestamp_str = std::ctime(&client_timestamp);
+    unsigned long int timestamp_int = static_cast<long>(client_msg.gps_data.timestamp.time_since_epoch().count());
 
     _log_mutex.lock();
-    _log_file << "Client " << client_msg.client_id << " " << "time: " << timestamp_str << " " << client_msg.gps_data.latitude << ", " << client_msg.gps_data.longitude << std::endl;
+    _log_file << "id," << client_msg.client_id  << ",timestamp," << timestamp_int <<",latlong," << client_msg.gps_data.latitude <<","  << client_msg.gps_data.longitude << std::endl;
     _log_mutex.unlock();
 
     return true;

@@ -17,24 +17,28 @@ namespace PangoBBG {
 
 class PangoBBGClass {
 public:
-    PangoBBGClass();
+    PangoBBGClass(int client_id);
     ~PangoBBGClass();
-
+    
     void run();
+
 private:
-    bool getGPSData(GPS_POINT_T* gps_data);   
+    bool getGPSData(GPS_POINT_T* gps_data, bool verbose = false);   
     void GPSThreadFunction(int client_id);
     int connectToServer();
+    bool sendDataToServer(GPS_POINT_T gps_data, bool verbose = false);
 
+    /////////////// class private variables
+    // server connection
     int socket_fd = -1;
     bool deliverable_data_exists = false;
-
+    int _client_id = 0;
+    // shared memory
     boost::interprocess::managed_shared_memory shm;
     GPS_POINT_T *gps_data;
-    int *new_data_available;
-    
+    int *new_data_available; 
     std::shared_ptr<boost::interprocess::named_mutex> gps_mutex;
-
+    // threads
     std::thread gps_thread;
     bool gps_thread_running = false;
 

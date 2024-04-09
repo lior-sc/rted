@@ -7,13 +7,15 @@
 #define GPS_MUTEX_NAME "RTED_PANGO_GPS_MUTEX"
 #define SHARED_MEMORY_SIZE 1024
 #define THREAD_SLEEP_TIME_MS 100
+#define VERBOSE false
 
 using boost::interprocess::read_write;
 using boost::interprocess::open_or_create;
 using boost::interprocess::create_only;
 
 namespace PangoBBG {
-PangoBBGClass::PangoBBGClass() : shm(create_only, SHARED_MEMORY_NAME, SHARED_MEMORY_SIZE){
+PangoBBGClass::PangoBBGClass(int client_id) : _client_id(client_id),
+    shm(create_only, SHARED_MEMORY_NAME, SHARED_MEMORY_SIZE){
 
     /** @note
      * one cannot open 2 instances of PaangoBBGNode at the same time on the same machine since the
@@ -120,19 +122,9 @@ void PangoBBGClass::GPSThreadFunction(int client_id) {
 
     while(gps_thread_running == true){
         
-        if(getGPSData(&gps_data_loc) == true){
-            time_t timestamp = std::chrono::system_clock::to_time_t(gps_data_loc.timestamp);
-            std::string timestamp_str = std::ctime(&timestamp);
-            std::cout << "New GPS data available. time:  " << timestamp_str;
+        if(getGPSData(&gps_data_loc, VERBOSE) == true){
             // new data available. send to server
-            msg.gps_data = gps_data_loc;
-            // send the message to the server
-            int ret = send(client_id, &msg, sizeof(msg), 0);
-            // check if the message was sent successfully
-            if(ret == -1){
-                    std::cerr << "Error sending data to server. Errno: " << errno << "  " << strerror(errno) << std::endl;
-                }     
-            
+            sendDataToServer(gps_data_loc, VERBOSE);
         }
         else{
             // do nothing
@@ -147,7 +139,7 @@ void PangoBBGClass::GPSThreadFunction(int client_id) {
     return;
 }
 
-bool PangoBBGClass::getGPSData(GPS_POINT_T* ref_var) {
+bool PangoBBGClass::getGPSData(GPS_POINT_T* ref_var, bool verbose) {
     bool got_new_data = false;
 
     gps_mutex->lock();
@@ -159,9 +151,35 @@ bool PangoBBGClass::getGPSData(GPS_POINT_T* ref_var) {
     }
     gps_mutex->unlock();    
 
+    if(verbose == true){
+        if(got_new_data == true){
+            time_t timestamp = std::chrono::system_clock::to_time_t(ref_var->timestamp);
+            std::string timestamp_str = std::ctime(&timestamp);
+            std::cout << "New GPS data available. time:  " << timestamp_str;
+        }
+    }
+
     return got_new_data;
 }
 
+bool PangoBBGClass::sendDataToServer(GPS_POINT_T gps_data, bool verbose) {
+    PANGO_CLIENT_MSG_T msg;
+    msg.client_id = _client_id;
+    msg.gps_data = gps_data;
+    
+    int ret = send(socket_fd, &msg, sizeof(msg), 0);
+
+    // check if the message was sent successfully
+    if(ret == -1){
+        std::cerr << "Error sending data to server. Errno: " << errno << "  " << strerror(errno) << std::endl;
+        return false;
+    }
+    else if(verbose == true){
+        std::cout << "Data sent to server successfully" << std::endl;
+    }
+
+    return true;
+}
 
 }; // namespace PangoBBG
 

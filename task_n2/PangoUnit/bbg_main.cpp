@@ -4,8 +4,10 @@
 
 #include "PangoBBG.hpp"
 
+#define USER_ID 1
+
 using namespace PangoBBG;
-PangoBBGClass pango_bbg;
+PangoBBGClass pango_bbg(USER_ID);
 
 void signalHandler(int signal) {
     std::cout << "\n\nHalt signal received. closing pango server..." << std::endl;
